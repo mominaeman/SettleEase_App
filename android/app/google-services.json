@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "701839609799",
+    "project_id": "settleease-6e26e",
+    "storage_bucket": "settleease-6e26e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:701839609799:android:0b064bc7c3c8e08bc353e2",
+        "android_client_info": {
+          "package_name": "com.momina.settleease"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "701839609799-js9koflmftap5erf7rteo84p973duf0m.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.momina.settleease",
+            "certificate_hash": "17ec2ab9d13ea7f73876d150d1d92b404fa6b3c4"
+          }
+        },
+        {
+          "client_id": "701839609799-90tdgq6hmq45ub60nhmf0b7o1qa93ts8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDyI_DBmYvOYLQMuKdmFLu2jiA2gHH-yAQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "701839609799-90tdgq6hmq45ub60nhmf0b7o1qa93ts8.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "701839609799-u257brljeilphmtk5jv5gkav2hi761de.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.flutterApplication1"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
