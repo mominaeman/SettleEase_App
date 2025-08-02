@@ -8,11 +8,38 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
+  /// 🔐 Register new user
+  Future<User?> registerUser(
+    BuildContext context,
+    String email,
+    String password,
+  ) async {
+    try {
+      final UserCredential userCredential = await _auth
+          .createUserWithEmailAndPassword(email: email, password: password);
+
+      if (!context.mounted) return null;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Signup Successful")));
+
+      return userCredential.user;
+    } catch (e) {
+      if (!context.mounted) return null;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
+      return null;
+    }
+  }
+
+  /// 🔐 Login existing user
   void loginUser(BuildContext context, String email, String password) async {
     try {
       await _auth.signInWithEmailAndPassword(email: email, password: password);
-      if (!context.mounted) return;
 
+      if (!context.mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const HomeScreen()),
@@ -29,34 +56,11 @@ class AuthService {
     }
   }
 
-  void registerUser(BuildContext context, String email, String password) async {
-    try {
-      await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      if (!context.mounted) return;
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Signup Successful")));
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
-    }
-  }
-
-  /// 🔑 FORGOT PASSWORD - SEND RESET EMAIL
+  /// 🔁 Forgot password
   void resetPassword(BuildContext context, String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email);
+
       if (!context.mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -72,12 +76,14 @@ class AuthService {
     }
   }
 
+  /// 🔓 Sign out user
   void signOut(BuildContext context) async {
     try {
       await _auth.signOut();
-      await _googleSignIn.signOut(); // For Google users
+      await _googleSignIn.signOut();
 
       if (!context.mounted) return;
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -90,6 +96,7 @@ class AuthService {
     }
   }
 
+  /// 🔐 Google Sign-In
   void signInWithGoogle(BuildContext context) async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
