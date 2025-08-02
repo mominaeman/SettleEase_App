@@ -9,6 +9,7 @@ class UserModel {
   final String? gender;
   final String? phoneNumber;
   final String? country;
+  final String? photoUrl;
 
   UserModel({
     required this.uid,
@@ -19,6 +20,7 @@ class UserModel {
     this.gender,
     this.phoneNumber,
     this.country,
+    this.photoUrl,
   });
 
   // From Firebase Auth (basic login info only)
@@ -31,6 +33,8 @@ class UserModel {
       fullName: null,
       gender: null,
       phoneNumber: null,
+      country: null,
+      photoUrl: null,
     );
   }
 
@@ -44,6 +48,8 @@ class UserModel {
       fullName: map['fullName'],
       gender: map['gender'],
       phoneNumber: map['phoneNumber'],
+      country: map['country'],
+      photoUrl: map['photoUrl'],
     );
   }
 
@@ -56,6 +62,8 @@ class UserModel {
       'fullName': fullName,
       'gender': gender,
       'phoneNumber': phoneNumber,
+      'country': country,
+      'photoUrl': photoUrl,
     };
   }
 }

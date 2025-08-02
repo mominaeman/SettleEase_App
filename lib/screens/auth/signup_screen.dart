@@ -55,6 +55,8 @@ class _SignupScreenState extends State<SignupScreen> {
           gender: selectedGender,
           phoneNumber:
               '$selectedCountryCode ${phoneNumberController.text.trim()}',
+          country: selectedCountry, // ✅ Added
+          photoUrl: null, // ✅ Optional: If you're adding profile pictures later
         );
 
         await _firestoreService.createOrUpdateUser(userModel);
