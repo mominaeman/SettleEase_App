@@ -22,8 +22,13 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   File? _pickedImage;
 
-  void _signOut(BuildContext context) {
-    AuthService().signOut(context);
+  void _signOut() async {
+    await AuthService().signOut(context);
+    if (!mounted) return;
+    Navigator.pushReplacementNamed(
+      context,
+      '/login',
+    ); // Replace with your actual login route
   }
 
   void _goToEditProfile(BuildContext context) {
@@ -199,7 +204,7 @@ class _HomeScreenState extends State<HomeScreen> {
               title: const Text('Logout'),
               onTap: () {
                 Navigator.pop(context);
-                _signOut(context);
+                _signOut(); // ✅ No more context passed
               },
             ),
           ],

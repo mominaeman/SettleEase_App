@@ -1,112 +1,133 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import '../screens/home/home_screen.dart';
-import '../screens/auth/login_screen.dart';
+import 'package:settleease/screens/home/home_screen.dart';
+import 'package:settleease/screens/auth/login_screen.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
-  /// 🔐 Register new user
-  Future<User?> registerUser(
+  // ✅ Sign up with email and password
+  Future<User?> signUpWithEmail(String email, String password) async {
+    try {
+      if (email.isEmpty || password.isEmpty) {
+        throw FirebaseAuthException(
+          code: 'empty-fields',
+          message: 'Email and password are required.',
+        );
+      }
+
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      final user = credential.user;
+      if (user == null) {
+        throw FirebaseAuthException(
+          code: 'null-user',
+          message: 'Signup failed. User is null.',
+        );
+      }
+
+      debugPrint("✅ Signed up: ${user.email}");
+      return user;
+    } on FirebaseAuthException catch (e) {
+      debugPrint("❌ Signup error: ${e.code} - ${e.message}");
+      throw Exception(_getSignupErrorMessage(e));
+    } catch (e) {
+      debugPrint("❌ Unexpected signup error: $e");
+      throw Exception("Unexpected signup error: ${e.toString()}");
+    }
+  }
+
+  // ✅ Login user
+  Future<void> loginUser(
     BuildContext context,
     String email,
     String password,
   ) async {
     try {
-      final UserCredential userCredential = await _auth
-          .createUserWithEmailAndPassword(email: email, password: password);
+      if (email.isEmpty || password.isEmpty) {
+        throw FirebaseAuthException(
+          code: 'empty-fields',
+          message: 'Email and password are required.',
+        );
+      }
 
-      if (!context.mounted) return null;
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Signup Successful")));
+      final user = credential.user;
 
-      return userCredential.user;
-    } catch (e) {
-      if (!context.mounted) return null;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
-      return null;
-    }
-  }
+      if (user == null || user.email == null) {
+        throw FirebaseAuthException(
+          code: 'null-user',
+          message: 'Login failed. User is null.',
+        );
+      }
 
-  /// 🔐 Login existing user
-  void loginUser(BuildContext context, String email, String password) async {
-    try {
-      await _auth.signInWithEmailAndPassword(email: email, password: password);
+      debugPrint("✅ Logged in: ${user.email}");
 
       if (!context.mounted) return;
+
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
 
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Login Successful")));
-    } catch (e) {
+    } on FirebaseAuthException catch (e) {
       if (!context.mounted) return;
+
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
-    }
-  }
-
-  /// 🔁 Forgot password
-  void resetPassword(BuildContext context, String email) async {
-    try {
-      await _auth.sendPasswordResetEmail(email: email);
-
-      if (!context.mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Password reset email sent. Please check your inbox."),
-        ),
-      );
+      ).showSnackBar(SnackBar(content: Text(_getLoginErrorMessage(e))));
     } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error: $e")));
-    }
-  }
-
-  /// 🔓 Sign out user
-  void signOut(BuildContext context) async {
-    try {
-      await _auth.signOut();
-      await _googleSignIn.signOut();
-
-      if (!context.mounted) return;
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
-    } catch (e) {
+      debugPrint("❌ Unexpected login error: $e");
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error signing out: ${e.toString()}")),
+        SnackBar(content: Text("Unexpected error: ${e.toString()}")),
       );
     }
   }
 
-  /// 🔐 Google Sign-In
-  void signInWithGoogle(BuildContext context) async {
+  // ✅ Password Reset
+  Future<void> resetPassword(String email) async {
+    if (email.isEmpty) {
+      throw FirebaseAuthException(
+        code: 'empty-email',
+        message: 'Email is required to reset password.',
+      );
+    }
+
+    await _auth.sendPasswordResetEmail(email: email);
+    debugPrint("📧 Password reset email sent to: $email");
+  }
+
+  // ✅ Sign out
+  Future<void> signOut(BuildContext context) async {
+    await _auth.signOut();
+    debugPrint("👋 User signed out");
+
+    if (context.mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    }
+  }
+
+  // ✅ Google Sign-In
+  Future<void> signInWithGoogle(BuildContext context) async {
     try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) {
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Google sign-in cancelled")),
-        );
-        return;
-      }
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) return; // Cancelled
 
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
@@ -117,21 +138,57 @@ class AuthService {
       );
 
       await _auth.signInWithCredential(credential);
+      debugPrint("✅ Google Sign-In successful");
 
       if (!context.mounted) return;
+
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Signed in with Google")));
-    } catch (e) {
-      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Google Sign-In Error: ${e.toString()}")),
+        const SnackBar(content: Text("Login with Google Successful")),
       );
+    } catch (e) {
+      debugPrint("❌ Google Sign-In error: $e");
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Google Sign-In failed: ${e.toString()}")),
+      );
+    }
+  }
+
+  // ✅ Login error messages
+  String _getLoginErrorMessage(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'user-not-found':
+        return "No user found with this email.";
+      case 'wrong-password':
+        return "Incorrect password.";
+      case 'invalid-credential':
+        return "Invalid login credentials.";
+      case 'empty-fields':
+        return "Please enter email and password.";
+      default:
+        return "Login failed: ${e.message}";
+    }
+  }
+
+  // ✅ Signup error messages
+  String _getSignupErrorMessage(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'email-already-in-use':
+        return "Email already in use.";
+      case 'invalid-email':
+        return "Invalid email format.";
+      case 'weak-password':
+        return "Password should be at least 6 characters.";
+      case 'empty-fields':
+        return "Please enter email and password.";
+      default:
+        return "Signup failed: ${e.message}";
     }
   }
 }

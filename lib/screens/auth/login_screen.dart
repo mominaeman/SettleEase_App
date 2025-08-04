@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../services/auth_service.dart';
-import '../../widgets/custom_text_field.dart';
-import '../../widgets/auth_button.dart';
-import 'signup_screen.dart';
-import 'forgot_password_screen.dart';
+import 'package:settleease/services/auth_service.dart';
+import 'package:settleease/widgets/auth_button.dart';
+import 'package:settleease/widgets/custom_text_field.dart';
+import 'package:settleease/screens/auth/forgot_password_screen.dart';
+import 'package:settleease/screens/auth/signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,70 +18,53 @@ class _LoginScreenState extends State<LoginScreen> {
   final AuthService _authService = AuthService();
 
   void _login() {
-    _authService.loginUser(
-      context,
-      emailController.text.trim(),
-      passwordController.text.trim(),
-    );
-  }
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
 
-  void _googleLogin() {
-    _authService.signInWithGoogle(context);
+    debugPrint('💡 Login Attempt → Email: "$email", Password: "$password"');
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Email and password cannot be empty")),
+      );
+      return;
+    }
+
+    _authService.loginUser(context, email, password);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black, // black theme
+      backgroundColor: Colors.black,
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Center(
           child: SingleChildScrollView(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text(
                   'SettleEase',
-                  textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 36,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 32,
                     color: Colors.white,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 40),
-                CustomTextField(controller: emailController, hintText: 'Email'),
-                const SizedBox(height: 20),
+                CustomTextField(
+                  controller: emailController,
+                  labelText: 'Email',
+                  hintText: 'Enter your email',
+                  keyboardType: TextInputType.emailAddress,
+                ),
                 CustomTextField(
                   controller: passwordController,
-                  hintText: 'Password',
-                  isPassword: true,
+                  labelText: 'Password',
+                  hintText: 'Enter your password',
+                  obscureText: true,
                 ),
-                const SizedBox(height: 20),
-                AuthButton(text: 'Login', onPressed: _login),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: _googleLogin,
-                  icon: Image.asset(
-                    'assets/google_icon.png', // Make sure this file exists
-                    height: 24,
-                    width: 24,
-                  ),
-                  label: const Text('Sign in with Google'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 14,
-                    ),
-                    textStyle: const TextStyle(fontSize: 16),
-                  ),
-                ),
-                const SizedBox(height: 12),
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
@@ -95,23 +78,43 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                     child: const Text(
                       'Forgot Password?',
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(color: Colors.grey),
                     ),
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextButton(
+                AuthButton(text: 'Login', onPressed: _login),
+                const SizedBox(height: 16),
+                AuthButton(
+                  text: 'Continue with Google',
+                  isGoogle: true,
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const SignupScreen()),
-                    );
+                    _authService.signInWithGoogle(context);
                   },
-                  child: const Text(
-                    "Don't have an account? Sign up",
-                    style: TextStyle(color: Colors.white),
-                    textAlign: TextAlign.center,
-                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      "Don’t have an account?",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const SignupScreen(),
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        'Create one',
+                        style: TextStyle(color: Colors.blue),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

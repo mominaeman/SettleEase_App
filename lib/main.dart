@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
-import 'package:settleease/providers/general_preferences_provider.dart';
 
 import 'firebase_options.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/groups/groups_screen.dart';
 import 'screens/expenses/expenses_screen.dart';
+import 'screens/settings/session_management_screen.dart'; // ✅ NEW
 
+import 'providers/general_preferences_provider.dart';
 import 'providers/theme_provider.dart';
 
 void main() async {
@@ -17,7 +18,7 @@ void main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   final generalPrefsProvider = GeneralPreferencesProvider();
-  await generalPrefsProvider.loadPreferences(); // Important
+  await generalPrefsProvider.loadPreferences();
 
   runApp(
     MultiProvider(
@@ -78,6 +79,11 @@ class SettleEaseApp extends StatelessWidget {
         );
       },
       home: const AppLauncher(),
+
+      // ✅ Add named routes here
+      routes: {
+        '/session-management': (context) => const SessionManagementScreen(),
+      },
     );
   }
 }
