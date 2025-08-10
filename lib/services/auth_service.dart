@@ -1,13 +1,16 @@
+// lib/services/auth_service.dart
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:provider/provider.dart';
 import 'package:settleease/screens/home/home_screen.dart';
 import 'package:settleease/screens/auth/login_screen.dart';
+import 'package:settleease/providers/theme_provider.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // ✅ Sign up with email and password
+  /// ✅ Sign up with email and password
   Future<User?> signUpWithEmail(String email, String password) async {
     try {
       if (email.isEmpty || password.isEmpty) {
@@ -22,16 +25,15 @@ class AuthService {
         password: password,
       );
 
-      final user = credential.user;
-      if (user == null) {
+      if (credential.user == null) {
         throw FirebaseAuthException(
           code: 'null-user',
           message: 'Signup failed. User is null.',
         );
       }
 
-      debugPrint("✅ Signed up: ${user.email}");
-      return user;
+      debugPrint("✅ Signed up: ${credential.user!.email}");
+      return credential.user;
     } on FirebaseAuthException catch (e) {
       debugPrint("❌ Signup error: ${e.code} - ${e.message}");
       throw Exception(_getSignupErrorMessage(e));
@@ -41,7 +43,7 @@ class AuthService {
     }
   }
 
-  // ✅ Login user
+  /// ✅ Login user
   Future<void> loginUser(
     BuildContext context,
     String email,
@@ -60,16 +62,20 @@ class AuthService {
         password: password,
       );
 
-      final user = credential.user;
-
-      if (user == null || user.email == null) {
+      if (credential.user == null || credential.user!.email == null) {
         throw FirebaseAuthException(
           code: 'null-user',
           message: 'Login failed. User is null.',
         );
       }
 
-      debugPrint("✅ Logged in: ${user.email}");
+      debugPrint("✅ Logged in: ${credential.user!.email}");
+
+      // Load user settings
+      await Provider.of<ThemeProvider>(
+        context,
+        listen: false,
+      ).loadUserSettings();
 
       if (!context.mounted) return;
 
@@ -83,7 +89,6 @@ class AuthService {
       ).showSnackBar(const SnackBar(content: Text("Login Successful")));
     } on FirebaseAuthException catch (e) {
       if (!context.mounted) return;
-
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(_getLoginErrorMessage(e))));
@@ -96,7 +101,7 @@ class AuthService {
     }
   }
 
-  // ✅ Password Reset
+  /// ✅ Password Reset
   Future<void> resetPassword(String email) async {
     if (email.isEmpty) {
       throw FirebaseAuthException(
@@ -109,36 +114,40 @@ class AuthService {
     debugPrint("📧 Password reset email sent to: $email");
   }
 
-  // ✅ Sign out
+  /// ✅ Sign out
   Future<void> signOut(BuildContext context) async {
     await _auth.signOut();
     debugPrint("👋 User signed out");
 
-    if (context.mounted) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (route) => false,
-      );
-    }
+    if (!context.mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
   }
 
-  // ✅ Google Sign-In
+  /// ✅ Google Sign-In
   Future<void> signInWithGoogle(BuildContext context) async {
     try {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) return; // Cancelled
+      if (googleUser == null) return; // Cancelled by user
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-
+      final googleAuth = await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
       await _auth.signInWithCredential(credential);
+
       debugPrint("✅ Google Sign-In successful");
+
+      // Load user settings
+      await Provider.of<ThemeProvider>(
+        context,
+        listen: false,
+      ).loadUserSettings();
 
       if (!context.mounted) return;
 
@@ -153,14 +162,13 @@ class AuthService {
     } catch (e) {
       debugPrint("❌ Google Sign-In error: $e");
       if (!context.mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Google Sign-In failed: ${e.toString()}")),
       );
     }
   }
 
-  // ✅ Login error messages
+  /// ✅ Login error messages
   String _getLoginErrorMessage(FirebaseAuthException e) {
     switch (e.code) {
       case 'user-not-found':
@@ -176,7 +184,7 @@ class AuthService {
     }
   }
 
-  // ✅ Signup error messages
+  /// ✅ Signup error messages
   String _getSignupErrorMessage(FirebaseAuthException e) {
     switch (e.code) {
       case 'email-already-in-use':

@@ -8,7 +8,8 @@ import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/groups/groups_screen.dart';
 import 'screens/expenses/expenses_screen.dart';
-import 'screens/settings/session_management_screen.dart'; // ✅ NEW
+import 'screens/settings/session_management_screen.dart';
+import 'screens/splash/splash_screen.dart';
 
 import 'providers/general_preferences_provider.dart';
 import 'providers/theme_provider.dart';
@@ -33,12 +34,52 @@ void main() async {
   );
 }
 
-class SettleEaseApp extends StatelessWidget {
+class SettleEaseApp extends StatefulWidget {
   const SettleEaseApp({super.key});
+
+  @override
+  State<SettleEaseApp> createState() => _SettleEaseAppState();
+}
+
+class _SettleEaseAppState extends State<SettleEaseApp> {
+  bool _initialized = false;
+  bool _isLoggedIn = false;
+  bool _autoLogin = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initApp();
+  }
+
+  Future<void> _initApp() async {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+
+    // Load theme & user settings from Firestore
+    await themeProvider.loadUserSettings();
+
+    final user = FirebaseAuth.instance.currentUser;
+    _isLoggedIn = user != null;
+    _autoLogin = themeProvider.autoLogin;
+
+    // Simulate splash delay
+    await Future.delayed(const Duration(seconds: 2));
+
+    setState(() {
+      _initialized = true;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+
+    if (!_initialized) {
+      return const MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: SplashScreen(),
+      );
+    }
 
     return MaterialApp(
       title: 'SettleEase',
@@ -78,9 +119,10 @@ class SettleEaseApp extends StatelessWidget {
           child: child!,
         );
       },
-      home: const AppLauncher(),
-
-      // ✅ Add named routes here
+      home:
+          (_isLoggedIn && _autoLogin)
+              ? const AppLauncher()
+              : const LoginScreen(),
       routes: {
         '/session-management': (context) => const SessionManagementScreen(),
       },
@@ -93,10 +135,7 @@ class AppLauncher extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
     final prefs = Provider.of<GeneralPreferencesProvider>(context);
-
-    if (user == null) return const LoginScreen();
 
     switch (prefs.defaultHomeScreen) {
       case 'Groups':
