@@ -4,12 +4,14 @@ class AuthButton extends StatelessWidget {
   final String text;
   final VoidCallback onPressed;
   final bool isGoogle;
+  final bool isLoading; // ✅ Added loading support
 
   const AuthButton({
     super.key,
     required this.text,
     required this.onPressed,
     this.isGoogle = false,
+    this.isLoading = false, // Default is false
   });
 
   @override
@@ -17,20 +19,40 @@ class AuthButton extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       height: 48,
-      child: ElevatedButton.icon(
+      child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: isGoogle ? Colors.white : Colors.blue,
           foregroundColor: isGoogle ? Colors.black : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          elevation: 2,
         ),
-        icon:
-            isGoogle
-                ? Image.asset(
-                  'assets/google_icon.png',
+        onPressed: isLoading ? null : onPressed, // Disable while loading
+        child:
+            isLoading
+                ? const SizedBox(
+                  width: 24,
                   height: 24,
-                ) // Optional icon
-                : const SizedBox.shrink(),
-        label: Text(text),
-        onPressed: onPressed,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2.5,
+                  ),
+                )
+                : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (isGoogle) ...[
+                      Image.asset('assets/google_icon.png', height: 24),
+                      const SizedBox(width: 8),
+                    ],
+                    Text(
+                      text,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
       ),
     );
   }

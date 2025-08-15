@@ -2,6 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+//import 'package:provider/provider.dart';
+//import '../../providers/theme_provider.dart';
 
 import '../../services/auth_service.dart';
 import '../profile/edit_profile_screen.dart';
@@ -9,8 +12,8 @@ import '../settings/notification_settings_screen.dart';
 import '../settings/privacy_settings_screen.dart';
 import '../settings/language_region_settings_screen.dart';
 import '../settings/theme_appearance_settings_screen.dart';
-import '../settings/general_preferences_screen.dart'; // ✅ New Import
-import '../settings/data_security_settings_screen.dart'; // ✅ New Import
+import '../settings/general_preferences_screen.dart';
+import '../settings/data_security_settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,14 +24,32 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   File? _pickedImage;
+  String? userName;
+  final User? user = FirebaseAuth.instance.currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    if (user != null) {
+      DocumentSnapshot userDoc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user!.uid)
+              .get();
+      setState(() {
+        userName = userDoc['name'] ?? 'User';
+      });
+    }
+  }
 
   void _signOut() async {
     await AuthService().signOut(context);
     if (!mounted) return;
-    Navigator.pushReplacementNamed(
-      context,
-      '/login',
-    ); // Replace with your actual login route
+    Navigator.pushReplacementNamed(context, '/login');
   }
 
   void _goToEditProfile(BuildContext context) {
@@ -128,11 +149,23 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-
     return Scaffold(
-      appBar: AppBar(title: const Text('SettleEase Home')),
-      drawer: Drawer(
+      appBar: AppBar(
+        title: const Text('SettleEase'),
+        automaticallyImplyLeading: false,
+        actions: [
+          Builder(
+            builder:
+                (context) => IconButton(
+                  icon: const Icon(Icons.menu),
+                  onPressed: () {
+                    Scaffold.of(context).openEndDrawer();
+                  },
+                ),
+          ),
+        ],
+      ),
+      endDrawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
@@ -204,7 +237,7 @@ class _HomeScreenState extends State<HomeScreen> {
               title: const Text('Logout'),
               onTap: () {
                 Navigator.pop(context);
-                _signOut(); // ✅ No more context passed
+                _signOut();
               },
             ),
           ],
@@ -227,7 +260,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 20),
             Text(
-              'Welcome, ${user?.email ?? "User"}!',
+              'Welcome, ${userName ?? "User"}!',
               style: const TextStyle(fontSize: 18, color: Colors.white),
             ),
           ],

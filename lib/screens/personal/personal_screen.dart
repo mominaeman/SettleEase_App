@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
-class GroupsScreen extends StatelessWidget {
-  const GroupsScreen({super.key});
+class PersonalScreen extends StatelessWidget {
+  const PersonalScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
       body: Center(
         child: Text(
-          'Groups Screen',
+          'Personal Screen',
           style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
       ),

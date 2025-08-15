@@ -3,16 +3,29 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
-import 'package:settleease/screens/home/home_screen.dart';
-import 'package:settleease/screens/auth/login_screen.dart';
 import 'package:settleease/providers/theme_provider.dart';
+import 'package:settleease/screens/auth/login_screen.dart';
+import 'package:settleease/screens/navigation/main_navigation_screen.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  /// ✅ Public email validation method
+  bool isValidEmail(String email) {
+    return RegExp(
+      r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]+$",
+    ).hasMatch(email.trim());
+  }
+
   /// ✅ Sign up with email and password
   Future<User?> signUpWithEmail(String email, String password) async {
     try {
+      if (!isValidEmail(email)) {
+        throw FirebaseAuthException(
+          code: 'invalid-email',
+          message: 'Please enter a valid email address.',
+        );
+      }
       if (email.isEmpty || password.isEmpty) {
         throw FirebaseAuthException(
           code: 'empty-fields',
@@ -21,8 +34,8 @@ class AuthService {
       }
 
       final credential = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
+        email: email.trim(),
+        password: password.trim(),
       );
 
       if (credential.user == null) {
@@ -43,55 +56,69 @@ class AuthService {
     }
   }
 
-  /// ✅ Login user
+  /// ✅ Login user with strict validation
   Future<void> loginUser(
     BuildContext context,
     String email,
     String password,
   ) async {
-    try {
-      if (email.isEmpty || password.isEmpty) {
-        throw FirebaseAuthException(
-          code: 'empty-fields',
-          message: 'Email and password are required.',
-        );
-      }
+    if (!isValidEmail(email)) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Invalid email format.")));
+      return;
+    }
+    if (email.isEmpty || password.isEmpty) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter email and password.")),
+      );
+      return;
+    }
 
-      final credential = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
+    try {
+      await _auth.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password.trim(),
       );
 
-      if (credential.user == null || credential.user!.email == null) {
-        throw FirebaseAuthException(
-          code: 'null-user',
-          message: 'Login failed. User is null.',
-        );
-      }
-
-      debugPrint("✅ Logged in: ${credential.user!.email}");
-
-      // Load user settings
+      if (!context.mounted) return;
       await Provider.of<ThemeProvider>(
         context,
         listen: false,
       ).loadUserSettings();
 
-      if (!context.mounted) return;
-
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
       );
 
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Login Successful")));
     } on FirebaseAuthException catch (e) {
+      debugPrint("❌ Login error: ${e.code} - ${e.message}");
       if (!context.mounted) return;
+
+      String errorMessage;
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage = "No account found with this email.";
+          break;
+        case 'wrong-password':
+          errorMessage = "Incorrect password.";
+          break;
+        case 'invalid-email':
+          errorMessage = "Invalid email format.";
+          break;
+        default:
+          errorMessage = "Login failed: ${e.message}";
+      }
+
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(_getLoginErrorMessage(e))));
+      ).showSnackBar(SnackBar(content: Text(errorMessage)));
     } catch (e) {
       debugPrint("❌ Unexpected login error: $e");
       if (!context.mounted) return;
@@ -101,16 +128,20 @@ class AuthService {
     }
   }
 
+  /// ✅ Auto-login check
+  bool isUserLoggedIn() {
+    return _auth.currentUser != null;
+  }
+
   /// ✅ Password Reset
   Future<void> resetPassword(String email) async {
-    if (email.isEmpty) {
+    if (!isValidEmail(email)) {
       throw FirebaseAuthException(
-        code: 'empty-email',
-        message: 'Email is required to reset password.',
+        code: 'invalid-email',
+        message: 'Please enter a valid email address.',
       );
     }
-
-    await _auth.sendPasswordResetEmail(email: email);
+    await _auth.sendPasswordResetEmail(email: email.trim());
     debugPrint("📧 Password reset email sent to: $email");
   }
 
@@ -130,30 +161,29 @@ class AuthService {
   /// ✅ Google Sign-In
   Future<void> signInWithGoogle(BuildContext context) async {
     try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      final googleUser = await GoogleSignIn().signIn();
       if (googleUser == null) return; // Cancelled by user
 
       final googleAuth = await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
 
-      await _auth.signInWithCredential(credential);
+      await _auth.signInWithCredential(
+        GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        ),
+      );
 
       debugPrint("✅ Google Sign-In successful");
 
-      // Load user settings
+      if (!context.mounted) return;
       await Provider.of<ThemeProvider>(
         context,
         listen: false,
       ).loadUserSettings();
 
-      if (!context.mounted) return;
-
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -165,22 +195,6 @@ class AuthService {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Google Sign-In failed: ${e.toString()}")),
       );
-    }
-  }
-
-  /// ✅ Login error messages
-  String _getLoginErrorMessage(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'user-not-found':
-        return "No user found with this email.";
-      case 'wrong-password':
-        return "Incorrect password.";
-      case 'invalid-credential':
-        return "Invalid login credentials.";
-      case 'empty-fields':
-        return "Please enter email and password.";
-      default:
-        return "Login failed: ${e.message}";
     }
   }
 

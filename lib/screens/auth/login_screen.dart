@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:settleease/services/auth_service.dart';
 import 'package:settleease/widgets/auth_button.dart';
 import 'package:settleease/widgets/custom_text_field.dart';
 import 'package:settleease/screens/auth/forgot_password_screen.dart';
 import 'package:settleease/screens/auth/signup_screen.dart';
+import 'package:settleease/screens/navigation/main_navigation_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,20 +19,100 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController passwordController = TextEditingController();
   final AuthService _authService = AuthService();
 
-  void _login() {
+  String? errorMessage; // single error for email/password
+  bool isLoading = false;
+
+  Future<void> _login() async {
+    setState(() {
+      errorMessage = null;
+      isLoading = true;
+    });
+
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
 
-    debugPrint('💡 Login Attempt → Email: "$email", Password: "$password"');
-
-    if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Email and password cannot be empty")),
-      );
+    if (email.isEmpty) {
+      setState(() {
+        errorMessage = "Email cannot be empty";
+        isLoading = false;
+      });
       return;
     }
 
-    _authService.loginUser(context, email, password);
+    if (!_authService.isValidEmail(email)) {
+      setState(() {
+        errorMessage = "Invalid email format";
+        isLoading = false;
+      });
+      return;
+    }
+
+    if (password.isEmpty) {
+      setState(() {
+        errorMessage = "Password cannot be empty";
+        isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      // ✅ Use FirebaseAuth directly here to ensure proper verification
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      if (!mounted) return;
+
+      // Only navigate if login succeeds
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+      );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      switch (e.code) {
+        case 'user-not-found':
+          setState(() => errorMessage = "No account found with this email");
+          break;
+        case 'wrong-password':
+          setState(() => errorMessage = "Incorrect password");
+          break;
+        case 'invalid-email':
+          setState(() => errorMessage = "Invalid email format");
+          break;
+        default:
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text("Login failed: ${e.message}")));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Unexpected error: $e")));
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _googleLogin() async {
+    setState(() => isLoading = true);
+    try {
+      await _authService.signInWithGoogle(context);
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Google Sign-In failed: $e")));
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
   }
 
   @override
@@ -57,14 +139,24 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: emailController,
                   labelText: 'Email',
                   hintText: 'Enter your email',
-                  keyboardType: TextInputType.emailAddress,
                 ),
+                const SizedBox(height: 16),
                 CustomTextField(
                   controller: passwordController,
                   labelText: 'Password',
                   hintText: 'Enter your password',
                   obscureText: true,
                 ),
+                if (errorMessage != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    errorMessage!,
+                    style: const TextStyle(
+                      color: Colors.redAccent,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
@@ -83,13 +175,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                AuthButton(text: 'Login', onPressed: _login),
+                AuthButton(
+                  text: isLoading ? 'Logging in...' : 'Login',
+                  onPressed: () {
+                    if (!isLoading) _login();
+                  },
+                ),
                 const SizedBox(height: 16),
                 AuthButton(
                   text: 'Continue with Google',
                   isGoogle: true,
                   onPressed: () {
-                    _authService.signInWithGoogle(context);
+                    if (!isLoading) _googleLogin();
                   },
                 ),
                 const SizedBox(height: 24),

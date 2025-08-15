@@ -5,6 +5,7 @@ import '../../services/firestore_service.dart';
 import '../../models/user_model.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter/services.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -28,7 +29,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   File? _pickedImage;
   final ImagePicker _picker = ImagePicker();
 
-  bool _isDataLoaded = false; // ✅ Added to delay build until data is ready
+  bool _isDataLoaded = false;
 
   @override
   void initState() {
@@ -45,22 +46,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       nameController.text = userData.name ?? '';
       fullNameController.text = userData.fullName ?? '';
       emailController.text = userData.email ?? '';
-
-      final rawPhone = userData.phoneNumber ?? '';
-      selectedCountryCode = RegExp(r'^(\+\d+)').stringMatch(rawPhone) ?? '+92';
-      phoneNumberController.text = rawPhone.replaceAll(
-        RegExp(r'^\+\d+\s*'),
-        '',
-      );
-
+      countryController.text = userData.country ?? '';
       selectedGender = userData.gender ?? 'Male';
       selectedCurrency = userData.currency ?? 'PKR';
-      countryController.text = userData.country ?? '';
+
+      // Phone handling
+      selectedCountryCode = userData.countryCode ?? '+92';
+      final rawPhone = userData.phoneNumber ?? '';
+
+      // Remove country code for display
+      phoneNumberController.text = rawPhone.replaceFirst(
+        RegExp(r'^\+?\d{1,3}'),
+        '',
+      );
     }
 
-    setState(() {
-      _isDataLoaded = true; // ✅ Mark data as loaded
-    });
+    setState(() => _isDataLoaded = true);
   }
 
   Future<void> _saveProfile() async {
@@ -73,12 +74,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       name: nameController.text.trim(),
       fullName: fullNameController.text.trim(),
       gender: selectedGender,
-      phoneNumber: '$selectedCountryCode ${phoneNumberController.text.trim()}',
+      phoneNumber: phoneNumberController.text.trim(), // digits only
+      countryCode: selectedCountryCode, // store separately
       currency: selectedCurrency,
       country: countryController.text.trim(),
     );
 
     await _firestoreService.createOrUpdateUser(updatedUser);
+
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Profile updated successfully')),
@@ -92,9 +95,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       imageQuality: 75,
     );
     if (pickedFile != null) {
-      setState(() {
-        _pickedImage = File(pickedFile.path);
-      });
+      setState(() => _pickedImage = File(pickedFile.path));
+    }
+  }
+
+  String _getISOCodeFromDialCode(String dialCode) {
+    switch (dialCode) {
+      case '+92':
+        return 'PK';
+      case '+93':
+        return 'AF';
+      case '+1':
+        return 'US';
+      default:
+        return 'PK';
     }
   }
 
@@ -105,11 +119,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       body:
           _isDataLoaded
               ? Padding(
-                padding: const EdgeInsets.all(24.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 child: Center(
                   child: SingleChildScrollView(
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Text(
                           'SettleEase',
@@ -164,7 +180,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             child: Align(
                               alignment: Alignment.bottomRight,
                               child: Container(
-                                decoration: BoxDecoration(
+                                decoration: const BoxDecoration(
                                   color: Colors.black54,
                                   shape: BoxShape.circle,
                                 ),
@@ -181,14 +197,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         const SizedBox(height: 30),
                         TextField(
                           controller: nameController,
-                          decoration: const InputDecoration(labelText: 'Name'),
+                          decoration: const InputDecoration(
+                            labelText: 'Name',
+                            border: OutlineInputBorder(),
+                          ),
                         ),
+                        const SizedBox(height: 16),
                         TextField(
                           controller: fullNameController,
                           decoration: const InputDecoration(
                             labelText: 'Full Name',
+                            border: OutlineInputBorder(),
                           ),
                         ),
+                        const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: selectedGender,
                           items:
@@ -206,35 +228,55 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               ),
                           decoration: const InputDecoration(
                             labelText: 'Gender',
+                            border: OutlineInputBorder(),
                           ),
                         ),
+                        const SizedBox(height: 16),
                         TextField(
                           controller: emailController,
-                          decoration: const InputDecoration(labelText: 'Email'),
+                          decoration: const InputDecoration(
+                            labelText: 'Email',
+                            border: OutlineInputBorder(),
+                          ),
                           readOnly: true,
                         ),
+                        const SizedBox(height: 16),
+
                         IntlPhoneField(
+                          controller: phoneNumberController,
+                          initialCountryCode: _getISOCodeFromDialCode(
+                            selectedCountryCode,
+                          ),
                           decoration: const InputDecoration(
                             labelText: 'Phone Number',
+                            border: OutlineInputBorder(),
                           ),
-                          initialCountryCode: selectedCountryCode.replaceAll(
-                            '+',
-                            '',
-                          ),
-                          initialValue: phoneNumberController.text,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter
+                                .digitsOnly, // Only digits
+                            LengthLimitingTextInputFormatter(
+                              10,
+                            ), // Max 10 digits for phone number only
+                          ],
                           onChanged: (phone) {
-                            setState(() {
-                              selectedCountryCode = '+${phone.countryCode}';
-                              phoneNumberController.text = phone.number;
-                            });
+                            // Only update the selected country code
+                            selectedCountryCode = '+${phone.countryCode}';
+
+                            // DO NOT modify phoneNumberController.text here
+                            // phoneNumberController.text should only contain digits
                           },
                         ),
+
+                        const SizedBox(height: 16),
                         TextField(
                           controller: countryController,
                           decoration: const InputDecoration(
                             labelText: 'Country',
+                            border: OutlineInputBorder(),
                           ),
                         ),
+                        const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: selectedCurrency,
                           items:
@@ -252,21 +294,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               ),
                           decoration: const InputDecoration(
                             labelText: 'Preferred Currency',
+                            border: OutlineInputBorder(),
                           ),
                         ),
-                        const SizedBox(height: 20),
-                        ElevatedButton(
-                          onPressed: _saveProfile,
-                          child: const Text('Save'),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _saveProfile,
+                            child: const Text('Save'),
+                          ),
                         ),
                       ],
                     ),
                   ),
                 ),
               )
-              : const Center(
-                child: CircularProgressIndicator(),
-              ), // 👈 Show loader while data is loading
+              : const Center(child: CircularProgressIndicator()),
     );
   }
 }

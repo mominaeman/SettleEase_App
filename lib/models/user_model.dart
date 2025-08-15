@@ -7,7 +7,8 @@ class UserModel {
   final String currency;
   final String? fullName;
   final String? gender;
-  final String? phoneNumber;
+  final String? phoneNumber; // digits only
+  final String countryCode; // e.g., +92
   final String? country;
   final String? photoUrl;
 
@@ -19,12 +20,17 @@ class UserModel {
     this.fullName,
     this.gender,
     this.phoneNumber,
+    required this.countryCode,
     this.country,
     this.photoUrl,
   });
 
   // From Firebase Auth (basic login info only)
-  factory UserModel.fromFirebase(firebase.User user) {
+  factory UserModel.fromFirebase(
+    firebase.User user, {
+    String phoneNumber = '',
+    String countryCode = '+92',
+  }) {
     return UserModel(
       uid: user.uid,
       email: user.email ?? '',
@@ -32,7 +38,8 @@ class UserModel {
       currency: '',
       fullName: null,
       gender: null,
-      phoneNumber: null,
+      phoneNumber: phoneNumber, // pass from UI
+      countryCode: countryCode, // pass from UI
       country: null,
       photoUrl: null,
     );
@@ -48,6 +55,7 @@ class UserModel {
       fullName: map['fullName'],
       gender: map['gender'],
       phoneNumber: map['phoneNumber'],
+      countryCode: map['countryCode'] ?? '+92',
       country: map['country'],
       photoUrl: map['photoUrl'],
     );
@@ -62,6 +70,7 @@ class UserModel {
       'fullName': fullName,
       'gender': gender,
       'phoneNumber': phoneNumber,
+      'countryCode': countryCode,
       'country': country,
       'photoUrl': photoUrl,
     };

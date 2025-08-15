@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import '../../services/auth_service.dart';
 import '../profile/edit_profile_screen.dart';
+import '../../models/user_model.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -31,58 +32,59 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _isLoading = false;
 
   void _signup() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
+    if (!_formKey.currentState!.validate()) return;
 
-      try {
-        final name = _nameController.text.trim();
-        final fullName = _fullNameController.text.trim();
-        final email = _emailController.text.trim();
-        final password = _passwordController.text.trim();
-        final phone =
-            '$_selectedCountryCode ${_phoneNumberController.text.trim()}';
-        final currency = _selectedCurrency;
-        final gender = _selectedGender;
-        final country = _selectedCountry;
+    setState(() => _isLoading = true);
 
-        final User? user = await _authService.signUpWithEmail(email, password);
+    try {
+      final name = _nameController.text.trim();
+      final fullName = _fullNameController.text.trim();
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
+      final phoneNumber = _phoneNumberController.text.trim();
+      //final countryCode = _selectedCountryCode;
+      final User? user = await _authService.signUpWithEmail(email, password);
 
-        if (user != null) {
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .set({
-                'uid': user.uid,
-                'email': email,
-                'name': name,
-                'fullName': fullName,
-                'gender': gender,
-                'phoneNumber': phone,
-                'currency': currency,
-                'country': country,
-              });
+      if (user != null) {
+        // Create UserModel
+        final newUser = UserModel(
+          uid: user.uid,
+          email: email,
+          name: name,
+          fullName: fullName,
+          gender: _selectedGender,
+          phoneNumber: phoneNumber,
+          countryCode: _selectedCountryCode,
+          currency: _selectedCurrency,
+          country: _selectedCountry,
+        );
 
-          if (!mounted) return;
+        // Save to Firestore
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .set(newUser.toMap());
 
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-          );
-        } else {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Signup failed. Please try again.')),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(e.toString())));
-        }
-      } finally {
-        if (mounted) setState(() => _isLoading = false);
+        if (!mounted) return;
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+        );
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Signup failed. Please try again.')),
+        );
       }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -122,6 +124,7 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               const SizedBox(height: 30),
 
+              // Name
               TextFormField(
                 controller: _nameController,
                 style: const TextStyle(color: Colors.white),
@@ -140,6 +143,7 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               const SizedBox(height: 20),
 
+              // Full Name
               TextFormField(
                 controller: _fullNameController,
                 style: const TextStyle(color: Colors.white),
@@ -153,6 +157,7 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               const SizedBox(height: 20),
 
+              // Gender
               DropdownButtonFormField<String>(
                 dropdownColor: Colors.black,
                 value: _selectedGender,
@@ -181,6 +186,7 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               const SizedBox(height: 20),
 
+              // Email
               TextFormField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
@@ -200,7 +206,9 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               const SizedBox(height: 20),
 
+              // Phone
               IntlPhoneField(
+                controller: _phoneNumberController,
                 style: const TextStyle(color: Colors.white),
                 dropdownTextStyle: const TextStyle(color: Colors.black),
                 decoration: const InputDecoration(
@@ -213,11 +221,11 @@ class _SignupScreenState extends State<SignupScreen> {
                 initialCountryCode: _selectedCountryCode.replaceAll('+', ''),
                 onChanged: (phone) {
                   _selectedCountryCode = '+${phone.countryCode}';
-                  _phoneNumberController.text = phone.number;
                 },
               ),
               const SizedBox(height: 20),
 
+              // Country
               DropdownButtonFormField<String>(
                 dropdownColor: Colors.black,
                 value: _selectedCountry,
@@ -254,6 +262,7 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               const SizedBox(height: 20),
 
+              // Currency
               DropdownButtonFormField<String>(
                 dropdownColor: Colors.black,
                 value: _selectedCurrency,
@@ -282,6 +291,7 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               const SizedBox(height: 20),
 
+              // Password
               TextFormField(
                 controller: _passwordController,
                 obscureText: true,
@@ -301,6 +311,7 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               const SizedBox(height: 20),
 
+              // Confirm Password
               TextFormField(
                 controller: _confirmPasswordController,
                 obscureText: true,
@@ -320,6 +331,7 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               const SizedBox(height: 30),
 
+              // Sign Up Button
               ElevatedButton(
                 onPressed: _isLoading ? null : _signup,
                 style: ElevatedButton.styleFrom(
