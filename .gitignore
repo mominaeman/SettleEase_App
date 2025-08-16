@@ -1,0 +1,17 @@
+# Flutter frontend
+flutter_application_1/build/
+flutter_application_1/.dart_tool/
+flutter_application_1/.idea/
+flutter_application_1/.packages
+flutter_application_1/.flutter-plugins
+flutter_application_1/.flutter-plugins-dependencies
+flutter_application_1/pubspec.lock
+
+# Node.js backend
+backend/node_modules/
+backend/.env
+backend/package-lock.json
+
+# General
+*.log
+.DS_Store
