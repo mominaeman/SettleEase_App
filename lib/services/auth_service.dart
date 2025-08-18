@@ -89,11 +89,13 @@ class AuthService {
         listen: false,
       ).loadUserSettings();
 
+      if (!context.mounted) return; // ✅ added check
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
       );
 
+      if (!context.mounted) return; // ✅ added check
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Login Successful")));
@@ -181,11 +183,13 @@ class AuthService {
         listen: false,
       ).loadUserSettings();
 
+      if (!context.mounted) return; // ✅ added check
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
       );
 
+      if (!context.mounted) return; // ✅ added check
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Login with Google Successful")),
       );
