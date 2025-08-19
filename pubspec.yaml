@@ -54,6 +54,8 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1
+
 
 flutter:
   uses-material-design: true
@@ -62,4 +64,9 @@ flutter:
   assets:
     - assets/google_icon.png
     - assets/default_avatar.png
-    - assets/images/logo.png
+    - assets/icon.png
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon.png"
